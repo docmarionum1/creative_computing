@@ -11,10 +11,14 @@
  * If the player doesn't get the correct location within three guesses, then the player loses and the correct location will blink.
  * 
  */
- 
-int currentLED = 0;
-unsigned int numLEDs = 7;
 
+// The LED currently selected
+int currentLED = 0;
+
+// The number of LEDs
+unsigned int numLEDs = 10;
+
+// Pins and current state for the three switches
 int leftPin = 13;
 int leftState = LOW;
 
@@ -24,9 +28,9 @@ int rightState = LOW;
 int selectPin = 12;
 int selectState = LOW;
 
+// The state the game is in
 // 0 - hide
 // 1 - seek
-
 int gameState = 0;
 
 const int HIDE = 0;
@@ -34,6 +38,8 @@ const int SEEK = 1;
 
 // Location of wumpus
 int location = 0;
+
+// Number of tries the player has left to find the wumpus
 int tries = 3;
 
 void setup() {
@@ -48,6 +54,9 @@ void setup() {
   pinMode(selectPin, INPUT);
 }
 
+/*
+ * Reset the game back to the original state after the game ends.
+ */
 void reset() {
   location = 0;
   tries = 3;
@@ -55,6 +64,9 @@ void reset() {
   gameState = HIDE;
 }
 
+/*
+ * Turn all the LEDs off.
+ */
 void clear() {
   // Clear LEDs
   for (int i = 0; i < numLEDs; i++) {
@@ -62,14 +74,17 @@ void clear() {
   }
 }
 
-// Display LED pattern for winning
+/*
+ * Display LED pattern for winning
+ * The pattern is flashing the LEDs in sequence three times.
+ */
 void win() {
   clear();
 
-  // Display pattern 5 times
-  for (int j = 0; j < 5; j++) {
-    //digitalWrite(numLEDs-1, LOW);
+  // Display pattern 3 times
+  for (int j = 0; j < 3; j++) {
     for (int i = 0; i < numLEDs; i++) {
+      // For each LED, turn it on, wait 100 ms then turn it off.
       digitalWrite(i, HIGH);
       delay(100);
       digitalWrite(i, LOW);
@@ -77,7 +92,10 @@ void win() {
   }
 }
 
-// Blink location for losing
+/*
+ * Display the LED pattern for losing.
+ * Slowly blink the currect LED.
+ */
 void lose() {
   clear();
 
@@ -89,7 +107,12 @@ void lose() {
   }
 }
 
-// Flash LEDs for hint
+/*
+ * Flash LEDs for hint
+ * If you are right next to the true location, flash the two LEDs next to you.
+ * 
+ * Otherwise flash all other LEDs besides the current and adjacent ones.
+ */
 void hint() {
   clear();
   bool state = 0;
@@ -124,11 +147,10 @@ void hint() {
 }
 
 void loop() {
+  // Get the current state of the input pins
   int newLeftState = digitalRead(leftPin);
   int newRightState = digitalRead(rightPin);
   int newSelectState = digitalRead(selectPin);
-
-  //Serial.println(newSelectState);
 
   if (gameState == HIDE || gameState == SEEK) {
     // Only control in hiding and seeking states
@@ -157,13 +179,15 @@ void loop() {
         // Move to seek gamestate
         gameState = SEEK;
       } else if (gameState == SEEK) {
-        // If the location was correct
         if (currentLED == location) {
+          // If the location was correct
           win();
           reset();
         } else if (--tries > 0) {
+          // If location was incorrect but there are tries remaining give a hint.
           hint();
         } else {
+          // Else the player lost
           lose();
           reset();
         }
@@ -173,6 +197,7 @@ void loop() {
     digitalWrite(currentLED, HIGH);
   }
 
+  // Update the saved input states
   leftState = newLeftState;
   rightState = newRightState;
   selectState = newSelectState;
