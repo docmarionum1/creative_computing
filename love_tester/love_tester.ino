@@ -1,14 +1,10 @@
 /*
-  Arduino Mario Bros Tunes
-  With Piezo Buzzer and PWM
+ Love Tester
+
+ A couple of people hold hands and then each take one lead in their free hand.
+ The LEDs measure their love for each other.  If they reach 4/4, victory music plays.
  
-  Connect the positive side of the Buzzer to pin 3,
-  then the negative side to a 1k ohm resistor. Connect
-  the other side of the 1 k ohm resistor to
-  ground(GND) pin on the Arduino.
- 
-  by: Dipto Pratyaksa
-  last updated: 31/3/13
+ Music code based off of Arduino Mario Bros Tunes by Dipto Pratyaksa
 */
  
 /*************************************************
@@ -106,7 +102,9 @@
 #define NOTE_DS8 4978
  
 #define melodyPin 3
-//Mario main theme melody
+
+// Final Fantasy Victory Fanfare
+// Melody
 int melody[] = {
   NOTE_E5, NOTE_E5, NOTE_E5, NOTE_E5, 
   NOTE_B4, NOTE_C5, NOTE_E5,
@@ -114,7 +112,7 @@ int melody[] = {
   0, 0, 0
   
 };
-
+// Tempo
 int tempo[] = {
   12, 12, 12, 4, 
   4, 4, 6,
@@ -129,8 +127,7 @@ int LEDs[] = {
  
 void setup(void)
 {
-  pinMode(3, OUTPUT);//buzzer
-  pinMode(13, OUTPUT);//led indicator when singing a note
+  pinMode(melodyPin, OUTPUT);//buzzer
 
   for (int i = 0; i < numLEDs; i++) {
     pinMode(LEDs[i], OUTPUT);
@@ -150,13 +147,22 @@ void clear() {
   }
 }
 
-// Light up 
+/*
+ * Light up a number of LEDs based on val
+ * Number of LEDs that light up:
+ * val >= 800: 4
+ * val >= 600: 3
+ * val >= 400: 2
+ * val >= 200: 1
+ * val < 200:  0
+ */
 void lights(int val) {
   clear();
-  //int maxLED = min(max(val - 400, 0) / 100, 4);
-  int maxLED = min(max(val/200, 0), 4);
-  Serial.println(maxLED);
 
+  // Figure out how many to light up
+  int maxLED = min(max(val/200, 0), 4);
+
+  // Light up the LEDs
   for (int i = 0; i < maxLED; i++) {
     digitalWrite(LEDs[i], HIGH);
   }
@@ -164,61 +170,67 @@ void lights(int val) {
 
 void loop()
 {
-  //sing();
+  // Holds the current value read off of the analog pin.
   int val = 0;
-  delay(5);
+
+  // Don't start the meter until the leads are being held
   do {
     delay(10);
     val = analogRead(5);
-    Serial.println(analogRead(5));
-    Serial.println("hi");
   } while (val < 100);
   
   // Read a bunch of times and get the max value:
   int maxVal = 0;
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 50; i++) {
     val = analogRead(5);
-    Serial.println(val);  
+    Serial.println(val);
+
+    // Update maxVal if the new value is higher
     maxVal = max(maxVal, val);
 
-    // Add a bit of randomness to val
-    val += random(-100,100);
+    // Add a bit of randomness to val to make the display more exciting.
+    val += random(-200,200);
+
+    // Make sure val is still between 0-800
     val = max(min(val, 800), 0);
-    //val += max(min(random(-50, 50), 400), 0);
-    
+
+    // Light up the correct LEDs
     lights(val);
-    buzz(melodyPin, val*2, 50);
+
+    // Make a buzzing sound based on the value
+    buzz(melodyPin, val, 50);
+    
     delay(50);
   }
+
+  // After reading from the pins, either play a victory tune if
+  // the maxVal got over 800, otherwise just flash the best score.
   
   //Victory!
   if (maxVal > 800) {
     sing();
   } else {
     // Blink final score
-    lights(maxVal);
-    delay(1000);
-    clear();
-    delay(1000);
-    lights(maxVal);
-    delay(1000);
-    clear();
-    delay(1000);
-    lights(maxVal);
-    delay(1000);
-    clear();
-    delay(1000);
+    for (int i = 0; i < 3; i++) {
+      lights(maxVal);
+      delay(1000);
+      clear();
+      delay(1000);
+    } 
   }
 
+  // Make sure to clear the LEDs before the it resets
   clear();
 }
- 
+
+/*
+ * Play the melody
+ */
 void sing() {
-  // iterate over the notes of the melody:
-  
- 
-  Serial.println(" 'Mario Theme'");
+  // Get the length of the melody
   int size = sizeof(melody) / sizeof(int);
+
+  // Loop through the notes and play each one
   for (int thisNote = 0; thisNote < size; thisNote++) {
 
     // to calculate the note duration, take one second
@@ -231,18 +243,21 @@ void sing() {
     // to distinguish the notes, set a minimum time between them.
     // the note's duration + 30% seems to work well:
     int pauseBetweenNotes = noteDuration * 1.30;
-    
+
+    // Light up all the LEDs in time with the melody
     clear();
     delay(pauseBetweenNotes);
     lights(1000);
-    
 
     // stop the tone playing:
     buzz(melodyPin, 0, noteDuration);
 
   }
 }
- 
+
+/*
+ * Play a note for the given frequency and length
+ */
 void buzz(int targetPin, long frequency, long length) {
  if (frequency == 0)
     return;
@@ -250,5 +265,4 @@ void buzz(int targetPin, long frequency, long length) {
  long duration = frequency * length / 1000;
  tone(targetPin, frequency, duration);
  delay(duration);
- //digitalWrite(targetPin, LOW);
 }
