@@ -1,7 +1,8 @@
 #include <Adafruit_NeoPixel.h>
 
 #define LED_PIN 6
-#define NUM_LEDS 20
+#define NUM_LEDS 30
+
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -44,6 +45,28 @@ void modifyColors(int n) {
   }
 }
 
+int detectButton(int row) {
+  int val = analogRead(row);
+
+  Serial.println(val);
+
+  if (val > 100 && val < 120) {
+    return 0;
+  } else if (val > 180 && val < 220) {
+    return 1;
+  } else if (val > 300 && val < 360) {
+    return 2;
+  } else if (val > 400 && val < 550) {
+    return 3;
+  } else if (val > 600 && val < 720) {
+    return 4;
+  } else if (val > 850 && val < 970) {
+    return 5;
+  }
+
+  return -1;
+}
+
 void setup() {
   // put your setup code here, to run once:
 
@@ -54,16 +77,27 @@ void setup() {
   setColors();
   strip.show(); // Initialize all pixels to 'off'
 
-  
+  Serial.begin(9600);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
 
-  modifyColors(random(0, NUM_LEDS-1));
+  /*modifyColors(random(0, NUM_LEDS-1));
   setColors();
+  strip.show();*/
+
+  int led = detectButton(5);
+  if (led > -1) {
+    //strip.setPixelColor(led, 255);
+    modifyColors(led);
+    setColors();
+  }
+
   strip.show();
 
-  delay(500);
+  //Serial.println(analogRead(5));
+
+  delay(50);
 
 }
