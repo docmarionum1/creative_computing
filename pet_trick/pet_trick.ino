@@ -4,6 +4,7 @@
 #define NUM_LEDS 30
 #define NUM_ROWS 6
 #define DELAY 50
+#define TOGGLE_PIN 13
 
 /*
  * Button/LED Layout
@@ -32,13 +33,19 @@ bool buttonState[NUM_LEDS];
 
 // The threshold values for the softpots to register a button press
 const int thresholds[6][2] = {
-    {100, 120},
+    {30, 120},
     {180, 220},
     {300, 360},
     {400, 550},
     {600, 720},
     {850, 970} 
   };
+
+// Mode switch
+// 0 = toggle LED on and off
+// 1 = WHO THE HELL KNOWS?!?
+bool mode = 0;
+bool toggleState = 0;
 
 /*
  * Init Stuff that needs initing
@@ -47,7 +54,7 @@ void initStuff() {
   for (int i = 0; i < NUM_LEDS; i++) {
     // Set the starting colors to a medium brightness white
     for (int j = 0; j < 3; j++) {
-      colors[i][j] = 127;
+      colors[i][j] = 0;
     }
 
     // Set the button states to false
@@ -104,7 +111,7 @@ bool detectButton(int button) {
   int val = analogRead(row);
 
   // Debugging
-  //Serial.println(val);
+  Serial.println(val);
 
   // Figure out the LED's position along the softpot 
   // For even rows the higher the index, the further along the
@@ -132,6 +139,8 @@ bool detectButton(int button) {
 void setup() {
   initStuff();
 
+  pinMode(TOGGLE_PIN, INPUT);
+
   strip.begin();
   strip.setBrightness(16);
   setColors();
@@ -141,12 +150,28 @@ void setup() {
 }
 
 void loop() {
+  // Check if the mode chaged
+  bool newToggleState = digitalRead(TOGGLE_PIN);
+  if (newToggleState && newToggleState != toggleState) {
+    mode = !mode;
+
+    //reset
+    initStuff();
+  }
+  toggleState = newToggleState;
+  
   // Loop through all the LEDS/buttons and see whether they are being pressed.
   // If so, and the state has changed, update the colors and save the state.
   for (int i = 0; i < NUM_LEDS; i++) {
     bool newState = detectButton(i);
     if (newState && !buttonState[i]) {
-      modifyColors(i);
+      if (mode == 0) {
+        colors[i][0] = ~colors[i][0];
+        colors[i][1] = ~colors[i][1];
+        colors[i][1] = ~colors[i][2];
+      } else if (mode == 1) {
+        modifyColors(i);
+      }
     }
     buttonState[i] = newState;
   }
