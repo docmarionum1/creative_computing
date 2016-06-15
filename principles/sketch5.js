@@ -58,16 +58,19 @@ function draw() {
   //translate(pos, 0, -1000);
   //translate(0, -boxSize[1]);
 
+  translate(0, height/2);
   translate(pos, boxSize[1]);
 
   if (dir != 0) {
-    shearX(map(abs(velocity), 0, 36, 0, -1));
+    shearX(map(abs(velocity), 0, 36, 0, -.7));
   } else {
     // -.333333333333
-    if (count < 12.5) {
-      shearX(map(Math.sin(count), -1, 1, -.333333333, .33333333));
-      count += .1;
+    if (count < 8) {
+      shearX(map(Math.cos(count), -1, 1, .3888888888, -.3888888888));
+  } else if (count < 23.5) {
+      shearX(map(Math.cos(count), -1, 1, 8*.3888888888/count, 8*-.3888888888/count));
     }
+    count += .2;
   }
 
   //translate(pos, 0);
