@@ -14,34 +14,38 @@ function setup() {
 
   //window.OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
 
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', "song.mp3", true);
-  xhr.responseType = "arraybuffer";
-  xhr.onload = function() {
-    var start = (new Date()).getTime();
-    var cx = new AudioContext() ;
-    cx.decodeAudioData(xhr.response, function(decodedBuffer) {
-      console.log(decodedBuffer.numberOfChannels);
-      console.log((new Date()).getTime() - start);
-      //var offlineContext = new OfflineContext(decodedBuffer.numberOfChannels, decodedBuffer.length, decodedBuffer.sampleRate);
+  audio_file.onchange = function() {
+      audio_file.style.display = 'none';
+      var file = URL.createObjectURL(this.files[0]);
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', file, true);
+      xhr.responseType = "arraybuffer";
+      xhr.onload = function() {
+        var start = (new Date()).getTime();
+        var cx = new AudioContext() ;
+        cx.decodeAudioData(xhr.response, function(decodedBuffer) {
+          console.log(decodedBuffer.numberOfChannels);
+          console.log((new Date()).getTime() - start);
+          //var offlineContext = new OfflineContext(decodedBuffer.numberOfChannels, decodedBuffer.length, decodedBuffer.sampleRate);
 
-      var source = cx.createBufferSource();
-      source.buffer = decodedBuffer;
-      source.connect(cx.destination);
+          var source = cx.createBufferSource();
+          source.buffer = decodedBuffer;
+          source.connect(cx.destination);
 
-      analyser = cx.createAnalyser();
-      source.connect(analyser);
-      frequencyData = new Uint8Array(analyser.frequencyBinCount);
-      source.start(0);
+          analyser = cx.createAnalyser();
+          source.connect(analyser);
+          frequencyData = new Uint8Array(analyser.frequencyBinCount);
+          source.start(0);
 
-      /*offlineContext.decodeAudioData(request.response, function(buffer) {
-        var source = offlineContext.createBufferSource();
-        source.buffer = buffer;
-        source.start(0);
-      });*/
-    });
+          /*offlineContext.decodeAudioData(request.response, function(buffer) {
+            var source = offlineContext.createBufferSource();
+            source.buffer = buffer;
+            source.start(0);
+          });*/
+        });
+      }
+      xhr.send(null);
   }
-  xhr.send(null);
 }
 
 function draw() {
