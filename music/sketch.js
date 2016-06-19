@@ -97,14 +97,14 @@ function setup() {
     }
 
     audio_file.onchange = function() {
-        upload.style.display = 'none';
+        document.getElementById('upload').style.display = 'none';
         var file = URL.createObjectURL(this.files[0]);
 
         id3(this.files[0], function(err, tags) {
             // tags now contains your ID3 tags
             console.log(tags);
-            title.innerHTML = tags.title;
-            artist.innerHTML = tags.artist;
+            document.getElementById('title').innerHTML = tags.title;
+            document.getElementById('artist').innerHTML = tags.artist;
         });
 
         var xhr = new XMLHttpRequest();
@@ -130,7 +130,7 @@ function setup() {
 
 function draw() {
     if (analyser) {
-        splash.style.opacity -= 0.01;
+        document.getElementById('splash').style.opacity -= 0.01;
         /*ambientLight(200);
         ambientMaterial(255);
         pointLight(255, 255, 255, 10, 1, -1);*/
