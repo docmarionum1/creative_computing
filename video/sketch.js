@@ -6,7 +6,6 @@ var capture;
 var moving;
 var glass;
 var count = 0;
-//background
 
 function setup() {
     canvas = createCanvas(videoWidth,videoHeight);
@@ -57,7 +56,7 @@ function draw() {
           if (abs(gray - previous.pixels[j]) < 10) {
               moving.pixels[j] = 255;
           } else {
-              moving.pixels[j] = capture.pixels[j];
+              moving.pixels[j] = 0;capture.pixels[j];
               if (count > 30)
                 glass.pixels[i+3] = 0;
           }
@@ -67,13 +66,6 @@ function draw() {
       if (random(100) < .1) {
           drawDirt(i);
       }
-
-      /*if (glass.pixels[i+3] == 255) {
-          glass.pixels[i] = capture.pixels[i];
-          glass.pixels[i+1] = capture.pixels[i+1];
-          glass.pixels[i+2] = capture.pixels[i+2];
-      }*/
-
     }
 
     if (capture.pixels.length > 0) {
@@ -85,6 +77,4 @@ function draw() {
     glass.updatePixels();
     image(capture, 0, 0, videoWidth, videoHeight);
     image(glass, 0, 0, videoWidth, videoHeight);
-    //filter(GRAY);
-
 }
