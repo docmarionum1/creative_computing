@@ -111,7 +111,7 @@ bool detectButton(int button) {
   int val = analogRead(row);
 
   // Debugging
-  Serial.println(val);
+  //Serial.println((String)row + " " + (String)val);
 
   // Figure out the LED's position along the softpot 
   // For even rows the higher the index, the further along the
@@ -130,6 +130,7 @@ bool detectButton(int button) {
   //return random(0,2);
 
   if (val > thresholds[idx][0] && val < thresholds[idx][1]) {
+    Serial.println((String)row + " " + (String)val);
     return true;
   }
 
