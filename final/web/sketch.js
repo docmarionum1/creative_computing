@@ -21,6 +21,12 @@ class Pulse {
     this.direction = direction;
     this.freq = freq;
     this.count = 0;
+    this.r = 100+parseInt(freq/100)*50;
+    this.g = 100+parseInt(freq%100);
+    this.b = 100+parseInt(freq%10)*10;
+
+    this.playing = false;
+    this.start();
   }
 
   // Update the pulse - if it moves, return the new location, else return null
@@ -43,6 +49,28 @@ class Pulse {
       return this.i;
     }
     return null;
+  }
+
+  togglePlaying() {
+    if (this.playing) {
+      this.stop();
+    } else {
+      this.start();
+    }
+  }
+
+  start() {
+    if (!this.playing) {
+      this.playing = true;
+      this.midi = synth.noteOnWithFreq(this.freq, 100);
+    }
+  }
+
+  stop() {
+    if (this.playing) {
+      this.playing = false;
+      synth.noteOff(this.midi, 100);
+    }
   }
 }
 
@@ -107,6 +135,27 @@ class LED {
     return sum;
   }
 
+  getColor() {
+      if (this.pulses.length > 0) {
+          var r = 0;
+          var g = 0;
+          var b = 0;
+          var n = this.pulses.length;
+
+          for (var i = 0; i < n; i++) {
+              r += this.pulses[i].r;
+              g += this.pulses[i].g;
+              b += this.pulses[i].b;
+          }
+
+          //return 'rgb(' + min(r,256) + ',' + min(g,256) + ',' + min(b,256) + ')';
+          return 'rgb(' + parseInt(r/n) + ',' + parseInt(g/n) + ',' + parseInt(b/n) + ')';
+      } else {
+          return 'rgb(0,0,0)';
+      }
+
+  }
+
   /*update(r, g, b) {
     this.r = r;
     this.g = g;
@@ -123,13 +172,15 @@ class LED {
       var j = this.pulses[i].update();
       if (j !== null) {
         var pulse = this.pulses.splice(i, 1)[0];
+        pulse.stop();
         if (j > -1) {
           LEDState[j].pulses.push(pulse);
+          pulse.start();
         }
       }
     }
 
-    var freq = this.getFreq();
+    /*var freq = this.getFreq();
     if (this.freq != freq) {
       this.stop();
       if (freq == 0) {
@@ -138,13 +189,14 @@ class LED {
         this.start(freq)
       }
     }
-    this.freq = freq;
+    this.freq = freq;*/
 
-    if (this.freq != 0) {
+    /*if (this.freq != 0) {
       this.button.elt.style.backgroundColor = 'blue';
     } else {
       this.button.elt.style.backgroundColor = 'red';
-    }
+  }*/
+    this.button.elt.style.backgroundColor = this.getColor();
   }
 
   inc() {
@@ -165,7 +217,7 @@ class LED {
     if (!this.playing) {
       this.playing = true;
       //this.osc.start();
-      this.button.elt.style.backgroundColor = 'blue';
+      //this.button.elt.style.backgroundColor = 'blue';
       this.midi = synth.noteOnWithFreq(freq, 100);
     }
   }
@@ -175,7 +227,7 @@ class LED {
       this.playing = false;
       //this.osc.stop();
       synth.noteOff(this.midi, 100);
-      this.button.elt.style.backgroundColor = 'red';
+      //this.button.elt.style.backgroundColor = 'red';
     }
   }
 }
