@@ -166,7 +166,7 @@ class LED {
       this.playing = true;
       //this.osc.start();
       this.button.elt.style.backgroundColor = 'blue';
-      this.midi = synth.noteOnWithFreq(freq, 1000);
+      this.midi = synth.noteOnWithFreq(freq, 100);
     }
   }
 
@@ -174,7 +174,7 @@ class LED {
     if (this.playing) {
       this.playing = false;
       //this.osc.stop();
-      synth.noteOff(this.midi, 1000);
+      synth.noteOff(this.midi, 100);
       this.button.elt.style.backgroundColor = 'red';
     }
   }
