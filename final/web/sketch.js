@@ -20,6 +20,7 @@ class Pulse {
     this.velocity = velocity;
     this.direction = direction;
     this.freq = freq;
+    this.noteVel = 127;
     this.count = 0;
     this.r = 100+parseInt(freq/100)*50;
     this.g = 100+parseInt(freq%100);
@@ -34,6 +35,7 @@ class Pulse {
   update() {
     if (++this.count == this.velocity) {
       this.count = 0;
+      this.noteVel -= 10;
       var oldLoc = this.i;
       var newLoc = this.i + this.direction;
 
@@ -62,7 +64,7 @@ class Pulse {
   start() {
     if (!this.playing) {
       this.playing = true;
-      this.midi = synth.noteOnWithFreq(this.freq, 100);
+      this.midi = synth.noteOnWithFreq(this.freq, this.noteVel);
     }
   }
 
@@ -82,7 +84,7 @@ class LED {
     this.b = 0;
     //this.osc = new p5.Oscillator(parseInt(i/numRows)*17+1, waveforms[parseInt(i%numRows)]);
     this.freq = 0;//
-    this.innateFreq = i*17 + 17;
+    this.innateFreq = i*17 + 51;
     this.beatLength = primes[i];
     this.count = 0;
     this.active = false;
@@ -237,7 +239,13 @@ function preload() {
 }
 
 function setup() {
-  synth = T("OscGen", {wave:"saw", mul:0.25}).play();
+  //synth = T("OscGen", {wave:"sin", mul:0.25}).play();
+  //var msec  = timbre.timevalue("bpm120 l8");
+  //synth = T("OscGen", {env:T("perc", {r:msec, ar:true})});
+  //
+  var env = T("perc", {a:50, r:2500});
+  synth = T("PluckGen", {env:env, mul:0.5}).play();
+
   frameRate(60);
   //createCanvas(400, 300);
   serial = new p5.SerialPort(); // make a new instance of the serialport library
