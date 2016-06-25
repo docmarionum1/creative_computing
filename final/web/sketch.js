@@ -4,14 +4,47 @@ var inData; // for incoming serial data
 var LEDState = [];
 var numLEDs = 30;
 var numRows = 5;
+var rowLength = numLEDs/numRows;
 var waveforms = ['sine', 'triangle', 'sawtooth', 'square', 'triangle', 'sawtooth'];
 var beatLength = 15;
 var synth;
 var primes = [
-  2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
+  5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
   73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
   157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233
 ];
+
+class Pulse {
+  constructor(velocity, direction, i, freq) {
+    this.i = i;
+    this.velocity = velocity;
+    this.direction = direction;
+    this.freq = freq;
+    this.count = 0;
+  }
+
+  // Update the pulse - if it moves, return the new location, else return null
+  // if return -1, remove the Pulse
+  update() {
+    if (++this.count == this.velocity) {
+      this.count = 0;
+      var oldLoc = this.i;
+      var newLoc = this.i + this.direction;
+
+      //this.i += this.direction;
+      if (
+        newLoc < 0 || newLoc >= numLEDs ||
+        (abs(this.direction) == 1 && parseInt(oldLoc/numRows) != parseInt(newLoc/numRows))
+      ) {
+        return -1;
+      }
+
+      this.i = newLoc;
+      return this.i;
+    }
+    return null;
+  }
+}
 
 class LED {
   constructor(i) {
@@ -20,7 +53,8 @@ class LED {
     this.g = 0;
     this.b = 0;
     //this.osc = new p5.Oscillator(parseInt(i/numRows)*17+1, waveforms[parseInt(i%numRows)]);
-    this.freq = i*17 + 17;
+    this.freq = 0;//
+    this.innateFreq = i*17 + 17;
     this.beatLength = primes[i];
     this.count = 0;
     this.active = false;
@@ -28,15 +62,33 @@ class LED {
     this.button = createButton(' ');
     this.button.position(parseInt(i%numRows)*50, parseInt(i/numRows)*50);
     this.button.mousePressed(this.activate.bind(this));
+    this.pulses = [];
   }
 
   activate() {
-    this.active = !this.active;
+    /*this.active = !this.active;
     if (this.active) {
       this.button.elt.style.backgroundColor = 'red';
     } else {
       this.stop();
       this.button.elt.style.backgroundColor = '';
+    }*/
+    var dirs = [-1, 1, numRows, -numRows];
+    for (var i = 0; i < dirs.length; i++) {
+      var dir = dirs[i];
+      var j = this.i + dir;
+
+      if (
+        j >= 0 && j < numLEDs &&
+        (abs(dir) != 1 || parseInt(this.i/numRows) == parseInt(j/numRows))
+      ) {
+        LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
+      }
+
+      /*
+      if (j > -1 && j < numLEDs) {
+        LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
+      }*/
     }
   }
 
@@ -47,6 +99,14 @@ class LED {
     serial.write(this.b);
   }
 
+  getFreq() {
+    var sum = 0;
+    for (var i = 0; i < this.pulses.length; i++) {
+      sum += this.pulses[i].freq;
+    }
+    return sum;
+  }
+
   /*update(r, g, b) {
     this.r = r;
     this.g = g;
@@ -54,10 +114,36 @@ class LED {
   }*/
 
   update() {
-    this.count++;
+    /*this.count++;
     if (this.count == this.beatLength) {
       this.togglePlaying();
       this.count = 0;
+    }*/
+    for (var i = this.pulses.length; i--;) {
+      var j = this.pulses[i].update();
+      if (j !== null) {
+        var pulse = this.pulses.splice(i, 1)[0];
+        if (j > -1) {
+          LEDState[j].pulses.push(pulse);
+        }
+      }
+    }
+
+    var freq = this.getFreq();
+    if (this.freq != freq) {
+      this.stop();
+      if (freq == 0) {
+
+      } else {
+        this.start(freq)
+      }
+    }
+    this.freq = freq;
+
+    if (this.freq != 0) {
+      this.button.elt.style.backgroundColor = 'blue';
+    } else {
+      this.button.elt.style.backgroundColor = 'red';
     }
   }
 
@@ -75,12 +161,12 @@ class LED {
     }
   }
 
-  start() {
-    if (!this.playing && this.active) {
+  start(freq) {
+    if (!this.playing) {
       this.playing = true;
       //this.osc.start();
       this.button.elt.style.backgroundColor = 'blue';
-      this.midi = synth.noteOnWithFreq(this.freq, 1000);
+      this.midi = synth.noteOnWithFreq(freq, 1000);
     }
   }
 
