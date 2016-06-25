@@ -1,17 +1,23 @@
 var serial; // variable to hold an instance of the serialport library
-var portName = 'COM4'; // fill in your serial port name here
+var portName = 'COM5'; // fill in your serial port name here
 var inData; // for incoming serial data
 var LEDState = [];
 var numLEDs = 30;
 var numRows = 5;
 var rowLength = numLEDs/numRows;
-var waveforms = ['sine', 'triangle', 'sawtooth', 'square', 'triangle', 'sawtooth'];
-var beatLength = 15;
 var synth;
 var primes = [
   5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
   73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
   157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233
+];
+var inputThresholds = [
+    [30, 120],
+    [180, 220],
+    [300, 360],
+    [400, 550],
+    [600, 720],
+    [850, 970]
 ];
 
 class Pulse {
@@ -39,7 +45,6 @@ class Pulse {
       var oldLoc = this.i;
       var newLoc = this.i + this.direction;
 
-      //this.i += this.direction;
       if (
         newLoc < 0 || newLoc >= numLEDs ||
         (abs(this.direction) == 1 && parseInt(oldLoc/numRows) != parseInt(newLoc/numRows))
@@ -79,30 +84,54 @@ class Pulse {
 class LED {
   constructor(i) {
     this.i = i;
+
     this.r = 0;
     this.g = 0;
     this.b = 0;
-    //this.osc = new p5.Oscillator(parseInt(i/numRows)*17+1, waveforms[parseInt(i%numRows)]);
+
     this.freq = 0;//
     this.innateFreq = i*17 + 51;
     this.beatLength = primes[i];
-    this.count = 0;
-    this.active = false;
+    //this.count = 0;
+    //this.active = false;
     this.playing = false;
+
+    this.pulses = [];
+
     this.button = createButton(' ');
     this.button.position(parseInt(i%numRows)*50, parseInt(i/numRows)*50);
     this.button.mousePressed(this.activate.bind(this));
-    this.pulses = [];
+
+    this.buttonState = false;
+    this.buttonRow = parseInt(i / numLEDs);
+    this.buttonIdx = i % numRows;
+
+    // Reverse for odd numbered rows
+    if (this.buttonRow % 2 == 1) {
+        this.buttonIdx = rowLength - this.buttonIdx;
+    }
+  }
+
+  processInput(values) {
+      var val = values[this.buttonRow];
+      if (
+          val > inputThresholds[this.buttonIdx][0] &&
+          val < inputThresholds[this.buttonIdx][1]
+      ) {
+          this.updateButtonState(true);
+      } else {
+          this.updateButtonState(false);
+      }
+  }
+
+  updateButtonState(state) {
+      if (state && state != this.buttonState) {
+          this.activate();
+      }
+      this.buttonState = state;
   }
 
   activate() {
-    /*this.active = !this.active;
-    if (this.active) {
-      this.button.elt.style.backgroundColor = 'red';
-    } else {
-      this.stop();
-      this.button.elt.style.backgroundColor = '';
-    }*/
     var dirs = [-1, 1, numRows, -numRows];
     for (var i = 0; i < dirs.length; i++) {
       var dir = dirs[i];
@@ -114,11 +143,6 @@ class LED {
       ) {
         LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
       }
-
-      /*
-      if (j > -1 && j < numLEDs) {
-        LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
-      }*/
     }
   }
 
@@ -127,14 +151,6 @@ class LED {
     serial.write(this.r);
     serial.write(this.g);
     serial.write(this.b);
-  }
-
-  getFreq() {
-    var sum = 0;
-    for (var i = 0; i < this.pulses.length; i++) {
-      sum += this.pulses[i].freq;
-    }
-    return sum;
   }
 
   getColor() {
@@ -150,26 +166,24 @@ class LED {
               b += this.pulses[i].b;
           }
 
-          //return 'rgb(' + min(r,256) + ',' + min(g,256) + ',' + min(b,256) + ')';
-          return 'rgb(' + parseInt(r/n) + ',' + parseInt(g/n) + ',' + parseInt(b/n) + ')';
+          r = parseInt(r/n);
+          g = parseInt(g/n);
+          b = parseInt(b/n);
+
+          this.r = r;
+          this.g = g;
+          this.b = b;
+
+          return 'rgb(' + r + ',' + g + ',' + b + ')';
       } else {
+          this.r = 0;
+          this.g = 0;
+          this.b = 0;
           return 'rgb(0,0,0)';
       }
-
   }
 
-  /*update(r, g, b) {
-    this.r = r;
-    this.g = g;
-    this.b = b;
-  }*/
-
   update() {
-    /*this.count++;
-    if (this.count == this.beatLength) {
-      this.togglePlaying();
-      this.count = 0;
-    }*/
     for (var i = this.pulses.length; i--;) {
       var j = this.pulses[i].update();
       if (j !== null) {
@@ -181,147 +195,58 @@ class LED {
         }
       }
     }
-
-    /*var freq = this.getFreq();
-    if (this.freq != freq) {
-      this.stop();
-      if (freq == 0) {
-
-      } else {
-        this.start(freq)
-      }
-    }
-    this.freq = freq;*/
-
-    /*if (this.freq != 0) {
-      this.button.elt.style.backgroundColor = 'blue';
-    } else {
-      this.button.elt.style.backgroundColor = 'red';
-  }*/
     this.button.elt.style.backgroundColor = this.getColor();
   }
-
-  inc() {
-    this.r++;
-    this.g++;
-    this.b++;
-  }
-
-  togglePlaying() {
-    if (this.playing) {
-      this.stop();
-    } else {
-      this.start();
-    }
-  }
-
-  start(freq) {
-    if (!this.playing) {
-      this.playing = true;
-      //this.osc.start();
-      //this.button.elt.style.backgroundColor = 'blue';
-      this.midi = synth.noteOnWithFreq(freq, 100);
-    }
-  }
-
-  stop() {
-    if (this.playing) {
-      this.playing = false;
-      //this.osc.stop();
-      synth.noteOff(this.midi, 100);
-      //this.button.elt.style.backgroundColor = 'red';
-    }
-  }
-}
-
-function preload() {
-  mySound = loadSound('witch.wav');
 }
 
 function setup() {
   //synth = T("OscGen", {wave:"sin", mul:0.25}).play();
-  //var msec  = timbre.timevalue("bpm120 l8");
-  //synth = T("OscGen", {env:T("perc", {r:msec, ar:true})});
-  //
   var env = T("perc", {a:50, r:2500});
   synth = T("PluckGen", {env:env, mul:0.5}).play();
 
   frameRate(60);
-  //createCanvas(400, 300);
   serial = new p5.SerialPort(); // make a new instance of the serialport library
   serial.on('data', serialEvent); // callback for when new data arrives
   serial.on('error', serialError); // callback for errors
-
   serial.open(portName, {baudrate: 115200}); // open a serial port
   serial.clear();
 
   for (var i = 0; i < numLEDs; i++) {
     LEDState[i] = new LED(i);
-    //LEDState[i].update(0,0,0);
   }
 
+  // Handshake
   serial.write(1); serial.write(3); serial.write(3); serial.write(7);
-
-  /*osc = new p5.Oscillator();
-  osc.setType('sawtooth');
-  osc.freq(100000);
-  osc.amp(1);
-  osc.start();
-  playing = true;
-  /*mySound.setVolume(2);
-  mySound.loop();
-
-  fft = new p5.FFT();
-  fft.setInput(osc);*/
 }
 
 function sendLED(i) {
-  i = (i + 1) % numLEDs;
-  LEDState[i].send();
-
-  /*if (i < numLEDs) {
-    LEDState[i].send();
+  // If we've sent all the LEDs, update the display
+  if (++i == numLEDs) {
+      serial.write(255);
+      serial.write(0);
+      serial.write(0);
+      serial.write(0);
+  } else if (i == 256) {
+      // If we've just updated the display, start sending colors from 0 again.
+      LEDState[0].send();
   } else {
+      LEDState[i].send();
+  }
 
-  }*/
 }
 
 function draw() {
-  /*if (frameCount % 60 && playing) {
-    playing = false;
-    osc.stop();
-  } else if (frameCount % 60 == 0) {
-    osc.start();
-    playing = true;
-  }*/
-  // black background, white text:
-  /*fft.analyze();
-  //background(fft.getEnergy('bass', 'treble'));// > 0 ? 255 : 0);
-  background(playing ? 255 : 0);
-  inData = fft.getEnergy('bass', 'treble');
-  fill(255);
-  // display the incoming serial data as a string:
-  text("incoming value: " + inData, 30, 30);*/
-  /*for (var i = 0; i < numLEDs; i++) {
-    //LEDState[i].update(frameCount % 256, frameCount % 128, frameCount % 64);
-    LEDState[i].update(i, i, i);
-  }*/
-  //LEDState[frameCount % numLEDs].inc();
-  /*for (var i = 0; i < numLEDs; i++) {
-    if (parseInt((frameCount % (beatLength*numLEDs)) / beatLength) == i) {
-      playing = i;
-      LEDState[i].start();
-    } else {
-      LEDState[i].stop();
-    }
-  }*/
     for (var i = 0; i < numLEDs; i++) {
       LEDState[i].update();
     }
+}
 
-  //background(0);
-  //fill(255);
-  //text("incoming value: " + playing, 30, 30)
+function processInput(data) {
+    var values = data.split(':')[1].split(',');
+
+    for (var i = 0; i < numLEDs; i++) {
+        LEDState[i].processInput(values);
+    }
 }
 
 function serialEvent() {
@@ -329,23 +254,24 @@ function serialEvent() {
   //var inByte = serial.readLine();
   var data = serial.readLine();//readStringUntil('\r\n');
 
-  //println("inByte: " + inByte);
   if (data) {
-    //console.log(data);
-    //inData = data;
-
+    // LED message
     if (data.charAt(0) == 'L') {
       //console.log(data);
       sendLED(parseInt(data.split(":")[1]));
     }
 
+    // Debug
     if (data.charAt(0) == 'D') {
-      inData = data;
       console.log(data);
     }
-  }
 
-  //console.log(inByte);
+    // Input
+    if (data.charAt(0) == 'I') {
+        //console.log(data);
+        //processInput(data);
+    }
+  }
 }
 
 function serialError(err) {
