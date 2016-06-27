@@ -1,5 +1,5 @@
 var serial; // variable to hold an instance of the serialport library
-var portName = 'COM5'; // fill in your serial port name here
+var portName = 'COM3'; // fill in your serial port name here
 var inData; // for incoming serial data
 var LEDState = [];
 var numLEDs = 30;
@@ -12,13 +12,34 @@ var primes = [
   157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233
 ];
 var inputThresholds = [
-    [30, 120],
-    [180, 220],
+    [20, 120],
+    [180, 240],
     [300, 360],
     [400, 550],
     [600, 720],
     [850, 970]
 ];
+
+evenDown = [11, 9, 7, 5, 3, 1];
+oddUp = evenDown;
+evenUp = [1, 3, 5, 7, 9, 11];
+oddDown = evenUp;
+
+//distances[odd/even][direction][rowIdx]
+var distances = {
+  0: {
+    'right': [1, 1, 1, 1, 1, 1],
+    'left': [-1, -1, -1, -1, -1, -1],
+    'up': [-1, -3, -5, -7, -9, -11],
+    'down': [11, 9, 7, 5, 3, 1]
+  },
+  1: {
+    'left': [1, 1, 1, 1, 1, 1],
+    'right': [-1, -1, -1, -1, -1, -1],
+    'down': [1, 3, 5, 7, 9, 11],
+    'up': [-11, -9, -7, -5, -3, -1]
+  }
+}
 
 class Pulse {
   constructor(velocity, direction, i, freq) {
@@ -36,18 +57,29 @@ class Pulse {
     this.start();
   }
 
+  /*var j = this.i + distances[this.buttonRow % 2][dir][this.buttonIdx];
+
+  // Don't spawn off grid
+  if (j >= 0 && j < numLEDs ) {
+    // If it's a left/right pulse, don't spawn onto next row
+    if ((dir == 'left' || dir == 'right') && parseInt(this.i/rowLength) == parseInt(j/rowLength)) {
+      continue;
+    }
+    LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
+  }*/
+
   // Update the pulse - if it moves, return the new location, else return null
   // if return -1, remove the Pulse
-  update() {
+  update(row, idx) {
     if (++this.count == this.velocity) {
       this.count = 0;
       this.noteVel -= 10;
       var oldLoc = this.i;
-      var newLoc = this.i + this.direction;
+      var newLoc = this.i + distances[row % 2][this.direction][idx];
 
       if (
         newLoc < 0 || newLoc >= numLEDs ||
-        (abs(this.direction) == 1 && parseInt(oldLoc/numRows) != parseInt(newLoc/numRows))
+        ((this.direction == 'left' || this.direction == 'right') && parseInt(oldLoc/rowLength) != parseInt(newLoc/rowLength))
       ) {
         return -1;
       }
@@ -98,29 +130,31 @@ class LED {
 
     this.pulses = [];
 
-    this.button = createButton(' ');
-    this.button.position(parseInt(i%numRows)*50, parseInt(i/numRows)*50);
-    this.button.mousePressed(this.activate.bind(this));
-
     this.buttonState = false;
-    this.buttonRow = parseInt(i / numLEDs);
-    this.buttonIdx = i % numRows;
+    this.buttonRow = parseInt(i / rowLength);
+    this.buttonIdx = i % rowLength;
 
     // Reverse for odd numbered rows
     if (this.buttonRow % 2 == 1) {
-        this.buttonIdx = rowLength - this.buttonIdx;
+        this.buttonIdx = rowLength - 1 - this.buttonIdx;
     }
+
+    this.button = createButton(' ');
+    this.button.position(this.buttonIdx*50, this.buttonRow*50);
+    this.button.mousePressed(this.activate.bind(this));
   }
 
   processInput(values) {
-      var val = values[this.buttonRow];
+      var val = parseInt(values[this.buttonRow]);
       if (
           val > inputThresholds[this.buttonIdx][0] &&
           val < inputThresholds[this.buttonIdx][1]
       ) {
           this.updateButtonState(true);
+          //this.button.elt.style.backgroundColor = "white";
       } else {
           this.updateButtonState(false);
+          //this.button.elt.style.backgroundColor = "black";
       }
   }
 
@@ -132,25 +166,35 @@ class LED {
   }
 
   activate() {
-    var dirs = [-1, 1, numRows, -numRows];
+    //var dirs = [-1, 1, rowLength, -rowLength];
+    var dirs = ['left', 'right', 'up', 'down'];
+
     for (var i = 0; i < dirs.length; i++) {
       var dir = dirs[i];
-      var j = this.i + dir;
+      var j = this.i + distances[this.buttonRow % 2][dir][this.buttonIdx];
 
-      if (
-        j >= 0 && j < numLEDs &&
-        (abs(dir) != 1 || parseInt(this.i/numRows) == parseInt(j/numRows))
-      ) {
+      // Don't spawn off grid
+      if (j >= 0 && j < numLEDs ) {
+        // If it's a left/right pulse, don't spawn onto next row
+        if ((dir == 'left' || dir == 'right') && parseInt(this.i/rowLength) != parseInt(j/rowLength)) {
+          continue;
+        }
         LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
       }
     }
   }
 
   send() {
-    serial.write(this.i);
+    /*serial.write(this.i);
     serial.write(this.r);
     serial.write(this.g);
-    serial.write(this.b);
+    serial.write(this.b);*/
+    var val =
+      map(this.r, 0, 255, 0, 3) +
+      (map(this.g, 0, 255, 0, 3) << 2) +
+      (map(this.b, 0, 255, 0, 3) << 4);
+
+    serial.write(val);
   }
 
   getColor() {
@@ -185,7 +229,7 @@ class LED {
 
   update() {
     for (var i = this.pulses.length; i--;) {
-      var j = this.pulses[i].update();
+      var j = this.pulses[i].update(this.buttonRow, this.buttonIdx);
       if (j !== null) {
         var pulse = this.pulses.splice(i, 1)[0];
         pulse.stop();
@@ -221,7 +265,7 @@ function setup() {
 
 function sendLED(i) {
   // If we've sent all the LEDs, update the display
-  if (++i == numLEDs) {
+  /*if (++i == numLEDs) {
       serial.write(255);
       serial.write(0);
       serial.write(0);
@@ -231,8 +275,10 @@ function sendLED(i) {
       LEDState[0].send();
   } else {
       LEDState[i].send();
+  }*/
+  for (var i = 0; i < numLEDs; i++) {
+    LEDState[i].send();
   }
-
 }
 
 function draw() {
@@ -258,18 +304,21 @@ function serialEvent() {
     // LED message
     if (data.charAt(0) == 'L') {
       //console.log(data);
-      sendLED(parseInt(data.split(":")[1]));
+      //sendLED(parseInt(data.split(":")[1]));
+      sendLED();
     }
 
     // Debug
     if (data.charAt(0) == 'D') {
       console.log(data);
+      //document.getElementById('log').innerHTML += data;
     }
 
     // Input
     if (data.charAt(0) == 'I') {
         //console.log(data);
-        //processInput(data);
+        processInput(data);
+        //document.getElementById('log').innerHTML += data + "<br/>";
     }
   }
 }

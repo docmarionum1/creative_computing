@@ -2,7 +2,7 @@
 
 #define LED_PIN 6
 #define NUM_LEDS 30
-#define NUM_ROWS 6
+#define NUM_ROWS 5
 #define DELAY 1
 #define TOGGLE_PIN 13
 
@@ -36,7 +36,7 @@ void setup() {
   pinMode(TOGGLE_PIN, INPUT);
 
   strip.begin();
-  strip.setBrightness(16);
+  strip.setBrightness(64);
   strip.show(); // Initialize all pixels to 'off'
 
   Serial.begin(115200);
@@ -54,7 +54,7 @@ bool handshake() {
 }
 
 void readPixelColor() {
-  byte i = Serial.read();
+  /*byte i = Serial.read();
   byte r = Serial.read();
   byte g = Serial.read();
   byte b = Serial.read();
@@ -68,7 +68,17 @@ void readPixelColor() {
 
   // Send of a response that will tell us that we've finished reading the packet
   Serial.println("L:" + (String)i);
-  Serial.println("D:"+(String)i + " = (" +(String)r + " " + (String)g + " " + (String)b + ")");
+  Serial.println("D:"+(String)i + " = (" +(String)r + " " + (String)g + " " + (String)b + ")");*/
+  for (int i = 0; i < NUM_LEDS; i++) {
+    byte v = Serial.read();
+    byte r = map(v & B000011, 0, 3, 0, 255);
+    byte g = map((v & B001100) >> 2, 0, 3, 0, 255);
+    byte b = map((v & B110000) >> 4, 0, 3, 0, 255);
+
+    strip.setPixelColor(i, strip.Color(r, g, b));
+  }
+  strip.show();
+  Serial.println("L:sync");
 }
 
 void sendPotState() {
@@ -84,7 +94,7 @@ void sendPotState() {
 }
 
 void loop() {
-  if (Serial.available() == 4) {
+  if (Serial.available() == NUM_LEDS) {
       readPixelColor();
   }
 
