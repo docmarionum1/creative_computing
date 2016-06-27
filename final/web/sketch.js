@@ -20,11 +20,6 @@ var inputThresholds = [
     [850, 970]
 ];
 
-evenDown = [11, 9, 7, 5, 3, 1];
-oddUp = evenDown;
-evenUp = [1, 3, 5, 7, 9, 11];
-oddDown = evenUp;
-
 //distances[odd/even][direction][rowIdx]
 var distances = {
   0: {
@@ -56,17 +51,6 @@ class Pulse {
     this.playing = false;
     this.start();
   }
-
-  /*var j = this.i + distances[this.buttonRow % 2][dir][this.buttonIdx];
-
-  // Don't spawn off grid
-  if (j >= 0 && j < numLEDs ) {
-    // If it's a left/right pulse, don't spawn onto next row
-    if ((dir == 'left' || dir == 'right') && parseInt(this.i/rowLength) == parseInt(j/rowLength)) {
-      continue;
-    }
-    LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
-  }*/
 
   // Update the pulse - if it moves, return the new location, else return null
   // if return -1, remove the Pulse
@@ -124,8 +108,7 @@ class LED {
     this.freq = 0;//
     this.innateFreq = i*17 + 51;
     this.beatLength = primes[i];
-    //this.count = 0;
-    //this.active = false;
+
     this.playing = false;
 
     this.pulses = [];
@@ -185,10 +168,7 @@ class LED {
   }
 
   send() {
-    /*serial.write(this.i);
-    serial.write(this.r);
-    serial.write(this.g);
-    serial.write(this.b);*/
+    // Compress color to 6 bits
     var val =
       map(this.r, 0, 255, 0, 3) +
       (map(this.g, 0, 255, 0, 3) << 2) +
@@ -264,18 +244,6 @@ function setup() {
 }
 
 function sendLED(i) {
-  // If we've sent all the LEDs, update the display
-  /*if (++i == numLEDs) {
-      serial.write(255);
-      serial.write(0);
-      serial.write(0);
-      serial.write(0);
-  } else if (i == 256) {
-      // If we've just updated the display, start sending colors from 0 again.
-      LEDState[0].send();
-  } else {
-      LEDState[i].send();
-  }*/
   for (var i = 0; i < numLEDs; i++) {
     LEDState[i].send();
   }
@@ -296,29 +264,24 @@ function processInput(data) {
 }
 
 function serialEvent() {
-  // read a byte from the serial port:
-  //var inByte = serial.readLine();
   var data = serial.readLine();//readStringUntil('\r\n');
 
   if (data) {
     // LED message
     if (data.charAt(0) == 'L') {
       //console.log(data);
-      //sendLED(parseInt(data.split(":")[1]));
       sendLED();
     }
 
     // Debug
     if (data.charAt(0) == 'D') {
       console.log(data);
-      //document.getElementById('log').innerHTML += data;
     }
 
     // Input
     if (data.charAt(0) == 'I') {
         //console.log(data);
         processInput(data);
-        //document.getElementById('log').innerHTML += data + "<br/>";
     }
   }
 }
