@@ -25,11 +25,6 @@
  */
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// Special value to signify the end of sending LED states
-#define SYNC 255
-
-//L(ED), I(NPUT), D(EBUG)
-
 byte loopCount = 0;
 
 void setup() {
@@ -54,22 +49,9 @@ bool handshake() {
 }
 
 void readPixelColor() {
-  /*byte i = Serial.read();
-  byte r = Serial.read();
-  byte g = Serial.read();
-  byte b = Serial.read();
-
-  if (i < NUM_LEDS) {
-    // If i is less than the number of LEDs, it corresponds to an LED to set
-    strip.setPixelColor(i, strip.Color(r, g, b));
-  } else if (i == SYNC) {
-    strip.show();
-  }
-
-  // Send of a response that will tell us that we've finished reading the packet
-  Serial.println("L:" + (String)i);
-  Serial.println("D:"+(String)i + " = (" +(String)r + " " + (String)g + " " + (String)b + ")");*/
   for (int i = 0; i < NUM_LEDS; i++) {
+
+    // Unpack color from 6 bits
     byte v = Serial.read();
     byte r = map(v & B000011, 0, 3, 0, 255);
     byte g = map((v & B001100) >> 2, 0, 3, 0, 255);
