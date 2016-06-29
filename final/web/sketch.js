@@ -51,10 +51,6 @@ class Pulse {
     this.velocity = velocity;
     this.direction = direction;
     this.count = 0;
-    /*
-    this.r = 100+parseInt(freq/100)*50;
-    this.g = 100+parseInt(freq%100);
-    this.b = 100+parseInt(freq%10)*10;*/
     this.color = color;
 
     this.playing = false;
@@ -237,10 +233,6 @@ class LED {
 }
 
 function setup() {
-  //synth = T("OscGen", {wave:"sin", mul:0.25}).play();
-  var env = T("perc", {a:50, r:2500});
-  synth = T("PluckGen", {env:env, mul:0.5}).play();
-
   frameRate(60);
   serial = new p5.SerialPort(); // make a new instance of the serialport library
   serial.on('data', serialEvent); // callback for when new data arrives
@@ -253,11 +245,7 @@ function setup() {
   }
 
   MIDI.loadPlugin({
-      //soundfontUrl: "../../MIDI.js/examples/soundfont/",
       soundfontUrl: "../../midi-js-soundfonts/MusyngKite/",
-      //soundfontUrl: "http://gleitz.github.io/midi-js-soundfonts/FluidR3_GM",
-      //instrument: "acoustic_grand_piano",
-      //instrument: "steel_drums",
       instruments: instruments.slice(0),
       onprogress: function(state, progress) {
           console.log(state, progress);
@@ -267,27 +255,13 @@ function setup() {
               MIDI.programChange(i, instruments[i]);
           }
 
-          /*var delay = 0; // play one note every quarter second
-          var note = 21; // the MIDI note
-          var velocity = 127; // how hard the note hits*/
-          // play the note
-          //MIDI.setVolume(0, 255);
-          //MIDI.programChange(0, 114);
-          //MIDI.setVolume(14, 127);
-          //MIDI.noteOn(13, 48, 127, 0);
-          //MIDI.noteOff(13, 48, 0.75); // Stop note on channel 0
-          /*MIDI.noteOn(0, note, velocity, delay);
-          MIDI.noteOff(0, note, delay + 1.75);*/
-
           // Handshake
           serial.write(1); serial.write(3); serial.write(3); serial.write(7);
 
+          // Activate to show that it's ready
           LEDState[0].activate();
       }
   });
-
-
-
 }
 
 function sendLED(i) {
@@ -311,7 +285,7 @@ function processInput(data) {
 }
 
 function serialEvent() {
-  var data = serial.readLine();//readStringUntil('\r\n');
+  var data = serial.readLine();
 
   if (data) {
     // LED message
