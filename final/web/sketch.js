@@ -19,6 +19,16 @@ var inputThresholds = [
     [600, 720],
     [850, 970]
 ];
+var notes = [
+    'A1', 'B1', 'C1', 'D1', 'E1', 'F1',
+    'F2', 'E2', 'D2', 'C2', 'B2', 'A2',
+    'A3', 'B3', 'C3', 'D3', 'E3', 'F3',
+    'F4', 'E4', 'D4', 'C4', 'B4', 'A4',
+    'A5', 'B5', 'C5', 'D5', 'E5', 'F5'
+];
+
+// xylophone, steel_drums, acoustic_guitar_nylon, violin, choir_aahs
+var instruments = [13, 114, 24, 40, 52];
 
 //distances[odd/even][direction][rowIdx]
 var distances = {
@@ -37,7 +47,8 @@ var distances = {
 }
 
 class Pulse {
-  constructor(velocity, direction, i, freq) {
+  constructor(velocity, direction, i, freq, instrument) {
+    this.instrument = instrument;
     this.i = i;
     this.velocity = velocity;
     this.direction = direction;
@@ -85,14 +96,17 @@ class Pulse {
   start() {
     if (!this.playing) {
       this.playing = true;
-      this.midi = synth.noteOnWithFreq(this.freq, this.noteVel);
+      //this.midi = synth.noteOnWithFreq(this.freq, this.noteVel);
+      this.note = MIDI.keyToNote[notes[this.i]];
+      MIDI.noteOn(this.instrument, this.note, 127, 0);
     }
   }
 
   stop() {
     if (this.playing) {
       this.playing = false;
-      synth.noteOff(this.midi, 100);
+      //synth.noteOff(this.midi, 100);
+      MIDI.noteOff(this.instrument, this.note, 0);
     }
   }
 }
@@ -162,7 +176,7 @@ class LED {
         if ((dir == 'left' || dir == 'right') && parseInt(this.i/rowLength) != parseInt(j/rowLength)) {
           continue;
         }
-        LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq));
+        LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq, this.buttonRow));
       }
     }
   }
@@ -239,8 +253,42 @@ function setup() {
     LEDState[i] = new LED(i);
   }
 
-  // Handshake
-  serial.write(1); serial.write(3); serial.write(3); serial.write(7);
+  MIDI.loadPlugin({
+      //soundfontUrl: "../../MIDI.js/examples/soundfont/",
+      soundfontUrl: "../../midi-js-soundfonts/MusyngKite/",
+      //soundfontUrl: "http://gleitz.github.io/midi-js-soundfonts/FluidR3_GM",
+      //instrument: "acoustic_grand_piano",
+      //instrument: "steel_drums",
+      instruments: instruments.slice(0),
+      onprogress: function(state, progress) {
+          console.log(state, progress);
+      },
+      onsuccess: function() {
+          for (var i = 0; i < instruments.length; i++) {
+              MIDI.programChange(i, instruments[i]);
+          }
+
+          /*var delay = 0; // play one note every quarter second
+          var note = 21; // the MIDI note
+          var velocity = 127; // how hard the note hits*/
+          // play the note
+          //MIDI.setVolume(0, 255);
+          //MIDI.programChange(0, 114);
+          //MIDI.setVolume(14, 127);
+          //MIDI.noteOn(13, 48, 127, 0);
+          //MIDI.noteOff(13, 48, 0.75); // Stop note on channel 0
+          /*MIDI.noteOn(0, note, velocity, delay);
+          MIDI.noteOff(0, note, delay + 1.75);*/
+
+          // Handshake
+          serial.write(1); serial.write(3); serial.write(3); serial.write(7);
+
+          LEDState[0].activate();
+      }
+  });
+
+
+
 }
 
 function sendLED(i) {
