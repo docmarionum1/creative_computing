@@ -1,11 +1,9 @@
 var serial; // variable to hold an instance of the serialport library
 var portName = 'COM3'; // fill in your serial port name here
-var inData; // for incoming serial data
 var LEDState = [];
 var numLEDs = 30;
 var numRows = 5;
 var rowLength = numLEDs/numRows;
-var synth;
 var primes = [
   5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
   73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
@@ -47,17 +45,17 @@ var distances = {
 }
 
 class Pulse {
-  constructor(velocity, direction, i, freq, instrument) {
+  constructor(velocity, direction, i, instrument, color) {
     this.instrument = instrument;
     this.i = i;
     this.velocity = velocity;
     this.direction = direction;
-    this.freq = freq;
-    this.noteVel = 127;
     this.count = 0;
+    /*
     this.r = 100+parseInt(freq/100)*50;
     this.g = 100+parseInt(freq%100);
-    this.b = 100+parseInt(freq%10)*10;
+    this.b = 100+parseInt(freq%10)*10;*/
+    this.color = color;
 
     this.playing = false;
     this.start();
@@ -68,7 +66,6 @@ class Pulse {
   update(row, idx) {
     if (++this.count == this.velocity) {
       this.count = 0;
-      this.noteVel -= 10;
       var oldLoc = this.i;
       var newLoc = this.i + distances[row % 2][this.direction][idx];
 
@@ -96,7 +93,6 @@ class Pulse {
   start() {
     if (!this.playing) {
       this.playing = true;
-      //this.midi = synth.noteOnWithFreq(this.freq, this.noteVel);
       this.note = MIDI.keyToNote[notes[this.i]];
       MIDI.noteOn(this.instrument, this.note, 127, 0);
     }
@@ -105,7 +101,6 @@ class Pulse {
   stop() {
     if (this.playing) {
       this.playing = false;
-      //synth.noteOff(this.midi, 100);
       MIDI.noteOff(this.instrument, this.note, 0);
     }
   }
@@ -119,8 +114,6 @@ class LED {
     this.g = 0;
     this.b = 0;
 
-    this.freq = 0;//
-    this.innateFreq = i*17 + 51;
     this.beatLength = primes[i];
 
     this.playing = false;
@@ -176,7 +169,13 @@ class LED {
         if ((dir == 'left' || dir == 'right') && parseInt(this.i/rowLength) != parseInt(j/rowLength)) {
           continue;
         }
-        LEDState[j].pulses.push(new Pulse(this.beatLength, dir, j, this.innateFreq, this.buttonRow));
+        LEDState[j].pulses.push(new Pulse(
+            this.beatLength, dir, j, this.buttonRow, {
+                r: this.buttonRow*50,
+                g: this.buttonIdx*40,
+                b: Math.abs(this.buttonRow - 2) * 100
+            }
+        ));
       }
     }
   }
@@ -199,9 +198,9 @@ class LED {
           var n = this.pulses.length;
 
           for (var i = 0; i < n; i++) {
-              r += this.pulses[i].r;
-              g += this.pulses[i].g;
-              b += this.pulses[i].b;
+              r += this.pulses[i].color.r;
+              g += this.pulses[i].color.g;
+              b += this.pulses[i].color.b;
           }
 
           r = parseInt(r/n);
